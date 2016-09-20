@@ -4,6 +4,7 @@
  * threads handling http requests.
  *
  * Course: 1DT032
+ * Student: Adriana Devera 820307T223
  */ 
 
 #include <sys/time.h>

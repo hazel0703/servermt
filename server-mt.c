@@ -8,6 +8,8 @@
  * 
  * To run:
  *  server <portnum (above 2000)> <threads> <schedalg>
+ *
+ * Student: Adriana Devera 820307T223  
  */
 
 #include <assert.h>
@@ -121,21 +123,41 @@ void *consumer(void *arg) {
 	/* assert(arg != NULL); */
 
 	/* TODO: Create a thread structure */
+	thread worker;
 
 	/* TODO: Initialize the statistics of the thread structure */
-	
+	worker.id = -1;
+	worker.count = 0;
+	worker.statics = 0;
+	worker.dynamics = 0;
+
 	request *req;
 	struct timeval dispatch;
 
 	/* Main thread loop */
 	while(1) {
 		/* TODO: Take the mutex */
-
+		pthread_mutex_lock(&lock);
+		
 		/* TODO: Wait if there is no client to be served. */
+		while(numfull == 0) 
+			{
+			pthread_cond_wait(&fill, &lock);
+			}
 
 		/* TODO: Get the dispatch time */
 		
+		gettimeofday(&dispatch, NULL);
+		
 		/* TODO: Set the ID of the the thread in charge */
+		if(worker.id < 0) 
+		{
+		    worker.id = threadid;
+		    threadid++;
+		}
+		worker.count++;
+
+		request *req;
 
 		/* Get the request from the queue according to the sched algorithm */
 		if (algorithm == POLICY1) {

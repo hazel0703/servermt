@@ -3,6 +3,7 @@
  *
  * Course: 1DT032
  * 
+ * Student: Adriana Devera 820307T223  
  */
 
 #include <assert.h>
@@ -129,7 +130,7 @@ void requestGetFiletype(char *filename, char *filetype) {
  * Handles a dynamic request.
  */
 /* TODO: add worker */
-void requestServeDynamic(int fd, char *filename, char *cgiargs, long arrival, long dispatch)
+void requestServeDynamic(int fd, char *filename, char *cgiargs, long arrival, long dispatch, thread *worker)
 {
 	char buf[MAXLINE], *emptylist[] = {NULL};
 
@@ -157,13 +158,12 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs, long arrival, lo
 	Wait(NULL);
 }
 
-
 /**
  * Handles a static request.
  * Responds to @fd, sending @filesize bytes from @filename.
  */
 /* TODO: Add worker */
-void requestServeStatic(int fd, char *filename, int filesize, long arrival, long dispatch) 
+void requestServeStatic(int fd, char *filename, int filesize, long arrival, long dispatch, thread *worker) 
 {
 	int srcfd;
 	char *srcp, filetype[MAXLINE], buf[MAXBUF];
@@ -215,7 +215,7 @@ void requestServeStatic(int fd, char *filename, int filesize, long arrival, long
  * @arrival and @dispatch times for the statistics.
  */
 /* TODO: Add worker */
-void requestHandle(int fd, long arrival, long dispatch)
+void requestHandle(int fd, long arrival, long dispatch, thread *worker)
 {
 
 	int is_static;

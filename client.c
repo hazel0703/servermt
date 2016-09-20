@@ -5,7 +5,8 @@
  * Prints out the HTTP response.
  * For testing your server, you might want to modify this client.
  *
- * Course: 1DT032   
+ * Course: 1DT032 
+ * Student: Adriana Devera 820307T223  
  *
  */
 
