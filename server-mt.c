@@ -8,8 +8,6 @@
  * 
  * To run:
  *  server <portnum (above 2000)> <threads> <schedalg>
- *
- * Student: Adriana Devera 820307T223  
  */
 
 #include <assert.h>
@@ -123,14 +121,15 @@ void *consumer(void *arg) {
 	/* assert(arg != NULL); */
 
 	/* TODO: Create a thread structure */
-	thread worker;
+        thread worker;
 
 	/* TODO: Initialize the statistics of the thread structure */
 	worker.id = -1;
 	worker.count = 0;
 	worker.statics = 0;
 	worker.dynamics = 0;
-
+	worker.client_id = 0;
+	
 	request *req;
 	struct timeval dispatch;
 
@@ -140,33 +139,45 @@ void *consumer(void *arg) {
 		pthread_mutex_lock(&lock);
 		
 		/* TODO: Wait if there is no client to be served. */
-		while(numfull == 0) 
-			{
-			pthread_cond_wait(&fill, &lock);
-			}
+		while(numfull == 0) /*numfull is the variable for to see the clients queued*/
+		{
+		  pthread_cond_wait(&fill, &lock);
+		}
+
 
 		/* TODO: Get the dispatch time */
-		
 		gettimeofday(&dispatch, NULL);
 		
 		/* TODO: Set the ID of the the thread in charge */
-		if(worker.id < 0) 
-		{
-		    worker.id = threadid;
-		    threadid++;
+		if(worker.id < 0) {
+			worker.id = threadid;
+			threadid++; /*Not sure if we need to increment the thread in charge*/
 		}
 		worker.count++;
 
-		request *req;
-
 		/* Get the request from the queue according to the sched algorithm */
-		if (algorithm == POLICY1) {
+		if (algorithm == -2) {
 			/* TODO: Implement your first scheduling policy here (FIFO or STACK) */
-		} else if (algorithm == POLICY2) {
+		/*As i am in group 13 i must implement the FIFO*/
+			buffer[fillptr] = req;	
+			fillptr = (fillptr+1) % max;	
+		}
+
+		} else if (algorithm == -1) {
 			/* TODO: Implement your second scheduling policy here (SFF or BFF) */
+			/*As i am in group 13 i must implement the SFF*/
+			req->size = requestFileSize(connfd);
+			buffer[fillptr] = req;
+			fillptr++;
+			if(fillptr > 1) {
+				qsort(buffer, fillptr, sizeof(*buffer), requestcmp);
+			}
+
 		}
 
 		/* TODO: Set the dispatch time of the request */
+		req->dispatch = (calculate_time(arrival));
+		
 
 		/* TODO: Signal that there is one request left */
 
@@ -177,11 +188,14 @@ void *consumer(void *arg) {
 		/* TODO: Synchronize */
 
 		/* TODO: Dispatch the request to the Request module */
+		
+
 
 		printf("Latency for client %d was %ld\n", worker.client_id, (long)(req->dispatch - req->arrival));
 		printf("Avg. client latency: %.2f\n", (float)latencies_acc/(float)clients_treated);
 
 		/* TODO: Close connection with the client */
+		Close(req->numfull); /*nor the fd??*/
 	}
 }
 
