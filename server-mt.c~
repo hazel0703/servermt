@@ -161,24 +161,24 @@ void *consumer(void *arg) {
 		if (algorithm == -2) {
 			/* TODO: Implement your first scheduling policy here (FIFO or STACK) */
 		/*As i am in group 13 i must implement the FIFO*/
-			buffer[fillptr] = req;	
-			fillptr = (fillptr+1) % max;	
-		}
+			req = (request *)buffer[useptr];
+			useptr = (useptr + 1) % max;
+		
 
 		} else if (algorithm == -1) {
 			/* TODO: Implement your second scheduling policy here (SFF or BFF) */
 			/*As i am in group 13 i must implement the SFF*/
-			req->size = requestFileSize(connfd);
-			buffer[fillptr] = req;
-			fillptr++;
+			req = (request *)buffer[0];
+			buffer[0] = buffer[fillptr - 1];
 			if(fillptr > 1) {
 				qsort(buffer, fillptr, sizeof(*buffer), requestcmp);
 			}
+			fillptr--;
 
 		}
 
 		/* TODO: Set the dispatch time of the request */
-		req->dispatch = (calculate_time(arrival));
+		 calculate_time(req->dispatch);
 		
 
 		/* TODO: Signal that there is one request left */
@@ -199,7 +199,7 @@ void *consumer(void *arg) {
 		printf("Avg. client latency: %.2f\n", (float)latencies_acc/(float)clients_treated);
 
 		/* TODO: Close connection with the client */
-		Close(req->numfull); /*nor the fd??*/
+		Close(req->fd); 
 	}
 }
 
@@ -298,6 +298,7 @@ int main(int argc, char *argv[])
 		/* TODO: Synchronize */
 		pthread_mutex_unlock(&lock); /*Using mutex signal*/
 	}
+}
 }
 
 
