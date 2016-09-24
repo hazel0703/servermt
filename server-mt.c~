@@ -261,7 +261,10 @@ int main(int argc, char *argv[])
 		pthread_mutex_unlock(&lock);
 
 		/* TODO: If the request queue is full, wait until somebody frees one slot */
-		
+		while(numfull == max) {
+		     pthread_cond_wait(&empty, &lock);
+		}
+
 
 		/* Allocate a request structure */
 		request *req = malloc(sizeof(request)); 
