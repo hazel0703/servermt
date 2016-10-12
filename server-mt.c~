@@ -130,9 +130,9 @@ void *consumer(void *arg) {
 	worker.count = 0;
 	worker.statics = 0;
 	worker.dynamics = 0;
-	worker.client_id = 0;
+	//worker.client_id = 0;
 	
-	request *req;
+	//request *req;
 	struct timeval dispatch;
 
 	/* Main thread loop */
@@ -140,6 +140,11 @@ void *consumer(void *arg) {
 		/* TODO: Take the mutex */
 		pthread_mutex_lock(&lock);
 		
+		/*
+		GERMAN
+		What happens if pthread_mutex_lock fails? Make sure you check the return value.
+		*/ /* but i need to call the pthread_mutex_lock and the return value will be given by the following while*/
+    		
 		/* TODO: Wait if there is no client to be served. */
 		while(numfull == 0) /*numfull is the variable for to see the clients queued*/
 		{
@@ -156,16 +161,17 @@ void *consumer(void *arg) {
 			threadid++; /*Not sure if we need to increment the thread in charge*/
 		}
 		worker.count++;
+		request *req = malloc(sizeof(request));
+		
 
 		/* Get the request from the queue according to the sched algorithm */
-		if (algorithm == -2) {
+		if (algorithm == FIFO) {
 			/* TODO: Implement your first scheduling policy here (FIFO or STACK) */
 		/*As i am in group 13 i must implement the FIFO*/
 			req = (request *)buffer[useptr];
 			useptr = (useptr + 1) % max;
-		
 
-		} else if (algorithm == -1) {
+		} else if (algorithm == SFF) {
 			/* TODO: Implement your second scheduling policy here (SFF or BFF) */
 			/*As i am in group 13 i must implement the SFF*/
 			req = (request *)buffer[0];
@@ -178,18 +184,25 @@ void *consumer(void *arg) {
 		}
 
 		/* TODO: Set the dispatch time of the request */
-		 calculate_time(req->dispatch);
+		req->dispatch = (calculate_time(dispatch));
+	 	
 		
 
 		/* TODO: Signal that there is one request left */
-		pthread_cond_signal(&empty);
+		numfull--;
 
 		/* Update Server statistics */
 		clients_treated++;
 		latencies_acc += (long)(req->dispatch - req->arrival);
 
 		/* TODO: Synchronize */
+		pthread_cond_signal(&empty);
 		pthread_mutex_unlock(&lock);
+		
+		/* 
+		GERMAN
+		Same as before, what happens if this function fails?
+		*/	
 
 		/* TODO: Dispatch the request to the Request module */
 		requestHandle(req->fd, req->arrival, req->dispatch, &worker); /*This function has been used in the first part and it is the one who manages the request but by adding the worker, which is the thread structure added*/
@@ -236,16 +249,18 @@ int main(int argc, char *argv[])
 
 
 	/* TODO: Allocate the requests queue */
-	if(alg > 0) {
-		buffer = malloc(buffers * sizeof(*buffer)); /*This is for FIFO and SSF*/
-	}
+	
+	buffer = malloc(buffers * sizeof(*buffer)); /*This is for FIFO and SSF*/
+	
 	/*revisar*/
 	/* TODO: Allocate the threads buffer */
 	cid = malloc(threads*sizeof(*cid));
 
 	/* TODO: Create N consumer threads */
 	int i;
-	for(i = 0; i < threads; i++) {
+	for(i = 0; i< threads; i++) {
+		cid[i] = malloc(sizeof(pthread_t));
+		pthread_create(cid[i], NULL, consumer, NULL);
 	}
 
 	/* Main Server Loop */
@@ -258,8 +273,12 @@ int main(int argc, char *argv[])
 		gettimeofday(&arrival, NULL);
 
 		/* TODO: Take the mutex to modify the requests queue */
-		pthread_mutex_unlock(&lock);
+		pthread_mutex_lock(&lock);
 
+		/* GERMAN
+		Why are you unlocking here?, us lock, not unlock, just made a mistake
+		*/
+	
 		/* TODO: If the request queue is full, wait until somebody frees one slot */
 		while(numfull == max) {
 		     pthread_cond_wait(&empty, &lock);
@@ -270,16 +289,20 @@ int main(int argc, char *argv[])
 		request *req = malloc(sizeof(request)); 
 
 		/* TODO: Fill the request structure */ 
-		pthread_cond_signal(&fill);
+		req->size = requestFileSize(connfd);
+                req->fd = connfd;
+                req->arrival = calculate_time(arrival);
+		//pthread_cond_signal(&fill); // <-- GERMAN: I think you want to do this later, maybe after inserting things in the queue.
 		
 	
 		/* Queue new request depending on scheduling algorithm */
-		if (alg == -2) { /*Policy 1*/
+		if (alg == FIFO) { /*Policy 1*/
 			/* TODO: Queue request according to POLICY1 (FIFO or STACK) */
 			buffer[fillptr] = req;	
 			fillptr = (fillptr+1) % max;
 
-		} else if(alg == -1) {
+
+		} else if(alg == SFF) {
 			/* TODO: Queue request according to POLICY2 (SFF or BFF) */
 			/* HINT: 
 			   You can use requestFileSize() to check the size of the file requested.
@@ -291,15 +314,18 @@ int main(int argc, char *argv[])
 			if(fillptr > 1) {
 			qsort(buffer, fillptr, sizeof(*buffer), requestcmp);
 				     }
+		}
 
 		/* TODO: Increase the number of clients queued */
 		numfull++;
 
 		/* TODO: Synchronize */
+		pthread_cond_signal(&fill); 
 		pthread_mutex_unlock(&lock); /*Using mutex signal*/
+		/* <-- GERMAN: Maybe here you want to unlock and then signal the fill condition */
 	}
 }
-}
+
 
 
     
