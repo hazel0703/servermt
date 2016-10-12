@@ -17,50 +17,42 @@
 #include "request.h"
 #include "util.h"
 
-/* Mutex for the request buffer */
+
+// 
+// server.c: A very, very simple web server
+//
+// To run:
+//  server <portnum (above 2000)>
+//
+// Repeatedly handles HTTP requests sent to this port number.
+// Most of the work is done within routines written in request.c
+//
+
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
-/* Condition variable to use when the queue was filled */
 pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
-
-/* Condition variable to use when the queue was emptied */
 pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
 
 pthread_t **cid;
 
-/* Structure of a HTTP request. */
 typedef struct {
 	int fd;
-	long size;
-	long arrival, dispatch;
+	long size, arrival, dispatch;
 } request;
 
+typedef struct {
+	int requests;
+	int fillptr;
+	request **buffer;
+} epoch;
 
-/* Request queue */
-volatile request **buffer;
+epoch **epochs;
+request **buffer;
+int fillptr, useptr, max, numfull, algorithm, threadid;
 
-/* Index to the next empty slot in the queue */
-volatile int fillptr;
-
-/* Index to the next request to be handled in the queue */
-volatile int useptr;
-
-/* Global variable for the size of the queue */
-int max;
-
-/* Number of clients queued */
-volatile int numfull;
-
-/* Global variable for the scheduling algorithm */
-sched_alg algorithm;
-
-/* Global variable for the id of the dispatching thread */
-volatile int threadid = 0; 
 
 /* Statistics for the average */
 volatile int clients_treated = 0;
 volatile int latencies_acc = 0;
-
 /**
  * Very simple input option parser.
  *
@@ -123,22 +115,32 @@ void *consumer(void *arg) {
 	/* assert(arg != NULL); */
 
 	/* TODO: Create a thread structure */
-        thread worker;
+	thread worker;
 
 	/* TODO: Initialize the statistics of the thread structure */
 	worker.id = -1;
 	worker.count = 0;
 	worker.statics = 0;
 	worker.dynamics = 0;
+<<<<<<< HEAD
 	//worker.client_id = 0;
 	
 	//request *req;
+=======
+	worker.client_id = 0;
+
+>>>>>>> 4b84aa0dfb3666ad230611b3171c8276b1579d02
 	struct timeval dispatch;
 
 	/* Main thread loop */
 	while(1) {
 		/* TODO: Take the mutex */
 		pthread_mutex_lock(&lock);
+
+		/*
+		GERMAN
+		What happens if pthread_mutex_lock fails? Make sure you check the return value.
+		*/
 		
 		/*
 		GERMAN
@@ -146,15 +148,14 @@ void *consumer(void *arg) {
 		*/ /* but i need to call the pthread_mutex_lock and the return value will be given by the following while*/
     		
 		/* TODO: Wait if there is no client to be served. */
-		while(numfull == 0) /*numfull is the variable for to see the clients queued*/
-		{
-		  pthread_cond_wait(&fill, &lock);
+		while(numfull == 0) {
+			pthread_cond_wait(&fill, &lock);
 		}
 
 
 		/* TODO: Get the dispatch time */
 		gettimeofday(&dispatch, NULL);
-		
+
 		/* TODO: Set the ID of the the thread in charge */
 		if(worker.id < 0) {
 			worker.id = threadid;
@@ -164,15 +165,28 @@ void *consumer(void *arg) {
 		request *req = malloc(sizeof(request));
 		
 
+		request *req;
+
 		/* Get the request from the queue according to the sched algorithm */
+<<<<<<< HEAD
 		if (algorithm == FIFO) {
+=======
+		if(algorithm == FIFO) {
+>>>>>>> 4b84aa0dfb3666ad230611b3171c8276b1579d02
 			/* TODO: Implement your first scheduling policy here (FIFO or STACK) */
 		/*As i am in group 13 i must implement the FIFO*/
 			req = (request *)buffer[useptr];
 			useptr = (useptr + 1) % max;
+<<<<<<< HEAD
 
 		} else if (algorithm == SFF) {
 			/* TODO: Implement your second scheduling policy here (SFF or BFF) */
+=======
+		}
+		
+		else if(algorithm == SFF) {
+		/* TODO: Implement your second scheduling policy here (SFF or BFF) */
+>>>>>>> 4b84aa0dfb3666ad230611b3171c8276b1579d02
 			/*As i am in group 13 i must implement the SFF*/
 			req = (request *)buffer[0];
 			buffer[0] = buffer[fillptr - 1];
@@ -180,13 +194,20 @@ void *consumer(void *arg) {
 				qsort(buffer, fillptr, sizeof(*buffer), requestcmp);
 			}
 			fillptr--;
-
 		}
-
+		
 		/* TODO: Set the dispatch time of the request */
 		req->dispatch = (calculate_time(dispatch));
+<<<<<<< HEAD
 	 	
+=======
+		numfull--;
+
+>>>>>>> 4b84aa0dfb3666ad230611b3171c8276b1579d02
 		
+		printf("Latency for client %d was %ld\n", worker.client_id, (long)(req->dispatch - req->arrival));
+		printf("Avg. client latency: %.2f\n", (float)latencies_acc/(float)clients_treated);
+	
 
 		/* TODO: Signal that there is one request left */
 		numfull--;
@@ -204,34 +225,36 @@ void *consumer(void *arg) {
 		Same as before, what happens if this function fails?
 		*/	
 
+		/* 
+		GERMAN
+		Same as before, what happens if this function fails?
+		*/	
+
 		/* TODO: Dispatch the request to the Request module */
-		requestHandle(req->fd, req->arrival, req->dispatch, &worker); /*This function has been used in the first part and it is the one who manages the request but by adding the worker, which is the thread structure added*/
 
+		requestHandle(req->fd, req->arrival, req->dispatch, &worker);
+		Close(req->fd);
 
-		printf("Latency for client %d was %ld\n", worker.client_id, (long)(req->dispatch - req->arrival));
-		printf("Avg. client latency: %.2f\n", (float)latencies_acc/(float)clients_treated);
-
-		/* TODO: Close connection with the client */
-		Close(req->fd); 
 	}
 }
 
 int main(int argc, char *argv[])
 {
-	/* Variables for the connection */
-	int listenfd, connfd, clientlen; 
-	struct sockaddr_in clientaddr;
+    /* Variables for the connection */
+    int listenfd, connfd, clientlen;
+    struct sockaddr_in clientaddr;
+
+    /* Variables for the user arguments */
+    int port; 
+    int threads, buffers; 
+    sched_alg alg;
+
 	
-	/* Variables for the user arguments */
-	int port;
-	int threads, buffers;
-	sched_alg alg;
+   /* Timestamp variables */
+   struct timeval arrival;
 
-	/* Timestamp variables */
-	struct timeval arrival;
-
-	/* Parse the input arguments */
-	getargs(argc, argv, &port, &threads, &buffers, &alg);
+  /* Parse the input arguments */
+  getargs(argc, argv, &port, &threads, &buffers, &alg);
 
 	/*  TODO:
 	 *  Initialize the global variables:
@@ -247,12 +270,22 @@ int main(int argc, char *argv[])
 	useptr = 0;
 	algorithm = alg; 
 
-
 	/* TODO: Allocate the requests queue */
+<<<<<<< HEAD
 	
 	buffer = malloc(buffers * sizeof(*buffer)); /*This is for FIFO and SSF*/
 	
 	/*revisar*/
+=======
+	if(alg > 0) {
+		epochs = malloc((buffers / alg) * sizeof(*epochs));
+	}
+	// FIFO or SFF
+	else {
+		buffer = malloc(buffers * sizeof(*buffer));
+	}
+
+>>>>>>> 4b84aa0dfb3666ad230611b3171c8276b1579d02
 	/* TODO: Allocate the threads buffer */
 	cid = malloc(threads*sizeof(*cid));
 
@@ -263,9 +296,9 @@ int main(int argc, char *argv[])
 		pthread_create(cid[i], NULL, consumer, NULL);
 	}
 
-	/* Main Server Loop */
-	listenfd = Open_listenfd(port);
-	while (1) {
+    /* Main Server Loop */
+    listenfd = Open_listenfd(port);
+    while (1) {
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
 
@@ -274,6 +307,13 @@ int main(int argc, char *argv[])
 
 		/* TODO: Take the mutex to modify the requests queue */
 		pthread_mutex_lock(&lock);
+<<<<<<< HEAD
+=======
+
+		/* GERMAN
+		Why are you unlocking here?
+		*/
+>>>>>>> 4b84aa0dfb3666ad230611b3171c8276b1579d02
 
 		/* GERMAN
 		Why are you unlocking here?, us lock, not unlock, just made a mistake
@@ -281,21 +321,24 @@ int main(int argc, char *argv[])
 	
 		/* TODO: If the request queue is full, wait until somebody frees one slot */
 		while(numfull == max) {
-		     pthread_cond_wait(&empty, &lock);
+			pthread_cond_wait(&empty, &lock);
 		}
-
-
+		
+		
 		/* Allocate a request structure */
 		request *req = malloc(sizeof(request)); 
 
 		/* TODO: Fill the request structure */ 
+<<<<<<< HEAD
 		req->size = requestFileSize(connfd);
                 req->fd = connfd;
                 req->arrival = calculate_time(arrival);
+=======
+>>>>>>> 4b84aa0dfb3666ad230611b3171c8276b1579d02
 		//pthread_cond_signal(&fill); // <-- GERMAN: I think you want to do this later, maybe after inserting things in the queue.
 		
-	
 		/* Queue new request depending on scheduling algorithm */
+<<<<<<< HEAD
 		if (alg == FIFO) { /*Policy 1*/
 			/* TODO: Queue request according to POLICY1 (FIFO or STACK) */
 			buffer[fillptr] = req;	
@@ -303,6 +346,15 @@ int main(int argc, char *argv[])
 
 
 		} else if(alg == SFF) {
+=======
+		if(alg == FIFO) {/*Policy 1*/
+			/* TODO: Queue request according to POLICY1 (FIFO or STACK) */
+			buffer[fillptr] = req;	
+			fillptr = (fillptr+1) % max;	
+		}
+		
+		else if(alg == SFF) {
+>>>>>>> 4b84aa0dfb3666ad230611b3171c8276b1579d02
 			/* TODO: Queue request according to POLICY2 (SFF or BFF) */
 			/* HINT: 
 			   You can use requestFileSize() to check the size of the file requested.
@@ -312,20 +364,40 @@ int main(int argc, char *argv[])
 			buffer[fillptr] = req;
 			fillptr++;
 			if(fillptr > 1) {
+<<<<<<< HEAD
 			qsort(buffer, fillptr, sizeof(*buffer), requestcmp);
 				     }
 		}
 
+=======
+				qsort(buffer, fillptr, sizeof(*buffer), requestcmp);
+			}
+		}
+		
+		
+		req->fd = connfd;
+		req->arrival = ((arrival.tv_sec) * 1000 + arrival.tv_usec/1000.0) + 0.5;
+		
+>>>>>>> 4b84aa0dfb3666ad230611b3171c8276b1579d02
 		/* TODO: Increase the number of clients queued */
 		numfull++;
 
 		/* TODO: Synchronize */
+<<<<<<< HEAD
 		pthread_cond_signal(&fill); 
 		pthread_mutex_unlock(&lock); /*Using mutex signal*/
 		/* <-- GERMAN: Maybe here you want to unlock and then signal the fill condition */
 	}
 }
 
+=======
+		pthread_cond_signal(&fill);
+		pthread_mutex_unlock(&lock); /*Using mutex signal*/
+		/* <-- GERMAN: Maybe here you want to unlock and then signal the fill condition */
+    }
+
+}
+>>>>>>> 4b84aa0dfb3666ad230611b3171c8276b1579d02
 
 
     
